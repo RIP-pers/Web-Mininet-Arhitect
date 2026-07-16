@@ -1,0 +1,32 @@
+# Jurnale (Logs)
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependențe (Cel mai important!)
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor / Sistem de operare
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Fișiere de mediu (Variabile secrete)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
