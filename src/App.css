@@ -107,8 +107,9 @@ body {
 }
 
 .device-image {
-  width: 64px;
-  height: 64px;
+  display: block;
+  width: 80px;
+  height: auto;
 }
 
 .selected-source {
@@ -222,4 +223,34 @@ body {
 
 .node-wrapper:hover .react-flow__handle {
   opacity: 1;
+}
+.node-wrapper {
+  padding: 0 !important;
+  margin: 0;
+  display: flex;
+  flex-direction: column; 
+  align-items: center;    /* FOARTE IMPORTANT: Asta aliniază caseta fix pe mijlocul pozei */
+  justify-content: center;
+  width: max-content; 
+}
+.device-label {
+  margin-top: 6px; 
+  color: #ffffff;
+  background-color: #1a1a2e;
+  border: 1px solid #4a4e69;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 6px;       /* Păstrăm caseta mică în jurul textului */
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+  
+  width: max-content;     /* OPREȘTE caseta să se lățească la fel de mult ca poza */
+  text-align: center;     /* Pentru siguranță, centrăm textul */
+}
+.image-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

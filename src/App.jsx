@@ -19,27 +19,40 @@ import linkImg from './assets/link.png';
 
 // --- DEFINIRE NOD PERSONALIZAT ---
 const ImageNode = ({ data }) => {
+  const getDisplayName = (id) => {
+    if (!id) return '';
+    if (id.startsWith('h')) return id.replace('h', 'PC');
+    if (id.startsWith('s')) return id.replace('s', 'Switch ');
+    return id;
+  };
+
   return (
     <div className="node-wrapper">
-      {/* Fiecare latură are DOUĂ handle-uri suprapuse (source + target),
-          ca linia să poată intra sau ieși din orice direcție */}
-      <Handle type="target" position={Position.Top} id="top-target" />
-      <Handle type="source" position={Position.Top} id="top-source" />
+      {/* Container nou doar pentru imagine și handle-uri */}
+      <div className="image-container">
+        <Handle type="target" position={Position.Top} id="top-target" />
+        <Handle type="source" position={Position.Top} id="top-source" />
 
-      <Handle type="target" position={Position.Bottom} id="bottom-target" />
-      <Handle type="source" position={Position.Bottom} id="bottom-source" />
+        <Handle type="target" position={Position.Bottom} id="bottom-target" />
+        <Handle type="source" position={Position.Bottom} id="bottom-source" />
 
-      <Handle type="target" position={Position.Left} id="left-target" />
-      <Handle type="source" position={Position.Left} id="left-source" />
+        <Handle type="target" position={Position.Left} id="left-target" />
+        <Handle type="source" position={Position.Left} id="left-source" />
 
-      <Handle type="target" position={Position.Right} id="right-target" />
-      <Handle type="source" position={Position.Right} id="right-source" />
+        <Handle type="target" position={Position.Right} id="right-target" />
+        <Handle type="source" position={Position.Right} id="right-source" />
 
-      <img
-        src={data.image}
-        alt={data.label}
-        className={data.isSourceSelected ? 'device-image selected-source' : 'device-image'}
-      />
+        <img
+          src={data.image}
+          alt={data.label}
+          className={data.isSourceSelected ? 'device-image selected-source' : 'device-image'}
+        />
+      </div>
+      
+      {/* Eticheta text rămâne în afara containerului de imagine */}
+      <div className="device-label">
+        {getDisplayName(data.deviceId)}
+      </div>
     </div>
   );
 };
@@ -282,6 +295,75 @@ export default function App() {
       // backend indisponibil - ignorăm silențios, JSON-ul rămâne vizibil în panou
     });
   }, [nodes, edges]);
+
+  // De fiecare dată când se adaugă/șterge un host, un switch, o conexiune...
+  useEffect(() => {
+    const topology = buildTopologyObject(nodes, edges);
+    const jsonStr = JSON.stringify(topology, null, 2);
+
+    setLiveJson(jsonStr);
+
+    fetch('/api/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: jsonStr,
+    }).catch(() => {
+      // backend indisponibil - ignorăm silențios
+    });
+  }, [nodes, edges]);
+
+  // =============================================================
+  // ---> AICI ADAUGI NOUL COD PENTRU ACTUALIZAREA ÎN TIMP REAL <---
+  // =============================================================
+  useEffect(() => {
+    setEdges((eds) => {
+      let hasChanges = false;
+      
+      const updatedEdges = eds.map((edge) => {
+        const sourceNode = nodes.find((n) => n.id === edge.source);
+        const targetNode = nodes.find((n) => n.id === edge.target);
+
+        if (sourceNode && targetNode) {
+          const { sourceHandle, targetHandle } = getClosestHandles(
+            sourceNode.position,
+            targetNode.position
+          );
+
+          if (edge.sourceHandle !== sourceHandle || edge.targetHandle !== targetHandle) {
+            hasChanges = true;
+            return { 
+                ...edge, 
+                sourceHandle, 
+                targetHandle 
+            };
+          }
+        }
+        return edge;
+      });
+
+      return hasChanges ? updatedEdges : eds;
+    });
+  }, [nodes, setEdges]);
+  // =============================================================
+
+ 
+
+// ... restul codului tău continuă la fel
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // Verificare live, cât timp utilizatorul trage cablul din handle
   const isValidConnection = useCallback(
