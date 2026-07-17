@@ -1,42 +1,225 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+* {
+  box-sizing: border-box;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
 }
 
-@keyframes logo-spin {
+
+.header {
+  background: radial-gradient(#0e0e0e, #653d6d);
+  background-color: #5c2842;
+  color: #ffffff;
+  padding: 15px 30px;
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;            
+  box-shadow: 0 4px 6px rgba(230, 102, 102, 0.1);
+  font-family: sans-serif;
+  width: 100%;
+  z-index: 10; 
+}
+
+.header-buttons {
+  display: flex;
+  gap: 15px;
+}
+
+
+.button {
+  background-color: #3b82f6;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease; 
+}
+
+.button:hover {
+  filter: brightness(1.1); 
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: #130a1c; 
+  background-image: 
+    linear-gradient(rgba(138, 43, 226, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 43, 226, 0.15) 1px, transparent 1px);
+  background-size: 50px 50px; 
+  animation: dataFlow 15s linear infinite;
+  box-shadow: inset 0 0 100px rgba(89, 21, 138, 0.5);
+}
+
+@keyframes dataFlow {
+  0% {
+    background-position: 0px 0px;
+  }
+  100% {
+    background-position: 50px 50px; 
+  }
+}
+
+.whitespace {
+  flex-grow: 1;
+  width: 100%;
+  position: relative;
+}
+
+.draggable-icon {
+  width: 45px; 
+  height: 45px;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: grab; /* Schimbă cursorul într-o mână deschisă */
+  transition: transform 0.2s ease;
+}
+
+/* Efect de mărire la hover */
+.draggable-icon:hover {
+  transform: scale(1.15);
+}
+
+/* Când dai click și tragi de ea, se face mai mică și mâna se închide */
+.draggable-icon:active {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+.active-tool {
+  outline: 3px solid #4ade80;
+  border-radius: 6px;
+}
+
+.device-image {
+  width: 64px;
+  height: 64px;
+}
+
+.selected-source {
+  outline: 3px solid #00b8f0;
+  border-radius: 6px;
+}
+
+.error-banner {
+  position: absolute;
+  top: 75px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #3a1414;
+  color: #ff6b6b;
+  border: 1px solid #ff6b6b;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-family: sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 20;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  animation: fadeInDown 0.2s ease;
+}
+
+@keyframes fadeInDown {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translate(-50%, -10px);
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.export-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 420px;
+  max-width: 90vw;
+  height: 100%;
+  background-color: #14101b;
+  border-left: 1px solid #4a2e55;
+  box-shadow: -6px 0 16px rgba(0, 0, 0, 0.5);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  font-family: sans-serif;
 }
 
-.card {
-  padding: 2em;
+.export-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #2a1c33;
 }
 
-.read-the-docs {
-  color: #888;
+.export-title {
+  color: #cbb8d6;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.export-close {
+  background: none;
+  border: none;
+  color: #cbb8d6;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.export-close:hover {
+  background-color: #2a1c33;
+  color: #ff6b6b;
+}
+
+.export-code {
+  flex: 1;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  background-color: #1a1a2e;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.node-wrapper .react-flow__handle {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.node-wrapper:hover .react-flow__handle {
+  opacity: 1;
+}
+.node-wrapper .react-flow__handle {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.node-wrapper:hover .react-flow__handle {
+  opacity: 1;
 }
