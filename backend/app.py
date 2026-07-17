@@ -79,3 +79,11 @@ def rewire_code(hosts, switches, links, start, end):
 		g.add_node(host.get('id'))
 	for switch in switches:
 		g.add_node(switch.get('id'))
+
+	for link in active_links:
+		src = link.get('source')
+		dst = link.get('target')
+		cost = link.get('weight', 10)
+
+		if src and dst:
+			g.add_edge(src, dst, weight=cost)
