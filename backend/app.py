@@ -5,27 +5,71 @@ app = Flask(__name__)
 CORS(app)
 
 @app.route('/api/generate', methods=['POST'])
-
 def topology_code():
-
-	code = "#!/usr/bin/env python3\n"
-	code = code + "from mininet.net import Mininet\n"
-	code = code + "from mininet.cli import CLI\n"
-	code = code + "def make_network():\n"
-	code = code + "    net = Mininet()\n"
-
 	data = request.get_json()
 
-	hosts, switches, links = [data.get(i, []) for i in ('hosts', 'switches', 'links')]
-	type = data.get('mode', 'build')
+	hosts = data.get('hosts', [])
+	switches = data.get('switches', [])
+	links = data.get('links', [])
+	mode_type = data.get('mode', 'build')
 
-	if type == 'build':
+	if mode_type == 'build':
+		response_data = build_code(hosts, switches, links)
+	elif mode_type == 'rewire':
+		start = data.get('start_node')
+		end = data.get('end_node')
+		response_data = rewire_code(hosts, switches, links, start, end)
+	else:
+		return jsonify({'error': 'Invalid mode'})
 
-		for host in hosts:
-			host_id = host.get('id', ' ')
-			host_ip = host.get('ip', ' ')
-			code = code + f"    {host_id} = net.addHost('{host_id}', ip = '{host_ip}')\n"
-		
-		for switch in switches:
-			switch_id = switch.get('id', ' ')
-			code = code + f"    {switch_id} = net.addSwitch('{switch_id}')\n"
+	return jsonify(response_data)
+
+def build_code(hosts, switches, links):
+
+	code = [
+		"#!/usr/bin/env python3",
+		"from mininet.net import Mininet",
+		"from mininet.cli import CLI",
+		"from mininet.log import setLogLevel",
+		"from mininet.link import TCLink",
+		"def make_network():",
+		"    net = Mininet(link=TCLink)"
+	]
+
+	for host in hosts:
+		host_id = host.get('id', ' ')
+		host_ip = host.get('ip', ' ')
+		code.append(f"    {host_id} = net.addHost('{host_id}', ip = '{host_ip}')")
+
+	code.append("")
+
+	for switch in switches:
+		switch_id = switch.get('id', ' ')
+		code.append(f"    {switch_id} = net.addSwitch('{switch_id}')")
+
+	code.append("")
+
+	for link in links:
+		src = link.get('source')
+		dst = link.get('target')
+		cost = link.get('weight', 10)
+		code.append(f"    net.addLink({src}, {dst}, delay='{cost}ms')")
+
+	code.append("")
+
+	code.extend([
+		"    net.start()",
+		"    CLI(net)",
+		"    net.stop()",
+		"",
+		"if __name__ == '__main__':",
+		"    setLogLevel('info')",
+		"    make_network()"
+	])
+
+	return "\n".join(code)
+
+def rewire_code(hosts, switches, links, start, end):
+	active_links = [link for link in links if link.get('active', True)]
+
+	code = build_code(hosts, switches, active_links)
