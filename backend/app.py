@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import networkx as nx
 
 app = Flask(__name__)
 CORS(app)
@@ -72,4 +73,9 @@ def build_code(hosts, switches, links):
 def rewire_code(hosts, switches, links, start, end):
 	active_links = [link for link in links if link.get('active', True)]
 
-	code = build_code(hosts, switches, active_links)
+	g = nx.Graph()
+
+	for host in hosts:
+		g.add_node(host.get('id'))
+	for switch in switches:
+		g.add_node(switch.get('id'))
