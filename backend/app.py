@@ -87,3 +87,18 @@ def rewire_code(hosts, switches, links, start, end):
 
 		if src and dst:
 			g.add_edge(src, dst, weight=cost)
+
+	try:
+		new_route = nx.shortest_path(g, source=start, target=end, weight='weight')
+
+		return {
+			"status": "success",
+			"path": new_route
+		}
+	
+	except nx.NetworkXNoPath:
+		return {
+			"status": "error",
+			"message": f"Nu exista cai disponibile intre {end} si {start}."
+		}
+	
