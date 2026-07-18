@@ -280,6 +280,10 @@ export default function App() {
   const [sourceNode, setSourceNode] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
+  const [rewireMode, setRewireMode] = useState(false);
+  const [rewireStart, setRewireStart] = useState('h1');
+  const [rewireEnd, setRewireEnd] = useState('h2');
+
   // --- COUNTERE PENTRU ID-URI STIL h1/h2.../s1/s2... ---
   const hostCounterRef = useRef(0);
   const switchCounterRef = useRef(0);
@@ -306,30 +310,26 @@ export default function App() {
     const jsonStr = JSON.stringify(topology, null, 2);
     setLiveJson(jsonStr);
 
+    // Dacă suntem în modul Rewire, oprim generarea de script Mininet!
+    if (rewireMode) return;
+
     // 1) Salvare build.txt
     fetch('/api/build', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: jsonStr,
-    }).catch(() => {
-      // backend indisponibil - ignorăm silențios, JSON-ul rămâne vizibil în panou
-    });
+    }).catch(() => {});
 
-    // 2) Generare cod (Mininet / Dijkstra) pe baza topologiei curente
+    // 2) Generare cod (Mininet)
     fetch('http://localhost:5000/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(topology),
     })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
-      })
+      .then((res) => res.json())
       .then((data) => setGeneratedCode(data))
-      .catch((err) => {
-        console.error('Eroare la generarea codului:', err);
-      });
-  }, [nodes, edges]);
+      .catch((err) => console.error('Eroare la generarea codului:', err));
+  }, [nodes, edges, rewireMode]); // <-- Adaugă rewireMode la final aici
 
   // Ține conexiunile lipite de partea corectă a nodului atunci când acesta e mutat
   useEffect(() => {
@@ -357,6 +357,96 @@ export default function App() {
       return hasChanges ? updatedEdges : eds;
     });
   }, [nodes, setEdges]);
+
+  // --- FUNCȚII PENTRU MODUL REWIRE (DIJKSTRA) ---
+
+  const highlightPathInReact = (pathNodes, currentEdges) => {
+    setEdges(currentEdges.map(edge => {
+      const srcDeviceId = nodes.find(n => n.id === edge.source)?.data.deviceId;
+      const tgtDeviceId = nodes.find(n => n.id === edge.target)?.data.deviceId;
+
+      // Verificăm dacă muchia conectează 2 noduri consecutive din ruta Dijkstra
+      let isPathEdge = false;
+      if (pathNodes && pathNodes.length > 1) {
+        for (let i = 0; i < pathNodes.length - 1; i++) {
+          if ((pathNodes[i] === srcDeviceId && pathNodes[i+1] === tgtDeviceId) ||
+              (pathNodes[i] === tgtDeviceId && pathNodes[i+1] === srcDeviceId)) {
+            isPathEdge = true;
+            break;
+          }
+        }
+      }
+
+      if (isPathEdge) {
+        // Colorează ruta cu VERDE și adaugă animație de pachete
+        return { ...edge, animated: true, style: { stroke: '#00ff00', strokeWidth: 4 } };
+      } else {
+        // Dacă nu e în rută, o face mai ștearsă/gri
+        return { ...edge, animated: false, style: { stroke: '#555', strokeWidth: 2, opacity: 0.5 } };
+      }
+    }));
+  };
+
+  const calculateRewire = async (currentEdges) => {
+    const topology = buildTopologyObject(nodes, currentEdges);
+    const payload = {
+      ...topology,
+      mode: 'rewire',
+      start_node: rewireStart,
+      end_node: rewireEnd
+    };
+
+    try {
+      const res = await fetch('http://localhost:5000/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      
+      // Verificăm statusul din backend-ul tău
+      if (data.status === 'succes' || data.status === 'success') {
+        highlightPathInReact(data.path, currentEdges);
+      } else {
+        showError(data.message || "Ruta a fost complet distrusă!");
+        // Facem toate muchiile roșii dacă rețeaua e complet izolată
+        setEdges(currentEdges.map(e => ({ ...e, animated: false, style: { stroke: 'red', strokeWidth: 3 } })));
+      }
+    } catch (err) {
+      console.error(err);
+      showError("Eroare conexiune server Flask!");
+    }
+  };
+
+  // Eveniment de tăiere a cablului (Click)
+  const onEdgeClick = useCallback((event, edge) => {
+    if (!rewireMode) return;
+    event.stopPropagation(); // Previne alte click-uri subiacente
+
+    // 1. Tăiem firul (îl scoatem din lista de edges)
+    const newEdges = edges.filter(e => e.id !== edge.id);
+    setEdges(newEdges);
+
+    // 2. Apelăm backend-ul pentru recalculare instantanee
+    calculateRewire(newEdges);
+  }, [rewireMode, edges, nodes, rewireStart, rewireEnd]);
+
+  // Funcția care comută modurile
+  const toggleRewireMode = () => {
+    const newMode = !rewireMode;
+    setRewireMode(newMode);
+    
+    if (newMode) {
+      // Când intrăm în Rewire, dezactivăm modul de link (pentru a nu se suprapune)
+      setLinkMode(false);
+      clearSourceSelection();
+      // Calculăm ruta inițială înainte să tăiem vreun fir
+      calculateRewire(edges);
+    } else {
+      // Când ieșim, readucem cablurile la vizualul normal
+      setEdges(eds => eds.map(e => ({ ...e, animated: false, style: {} })));
+    }
+  };
 
   // Verificare live, cât timp utilizatorul trage cablul din handle
   const isValidConnection = useCallback(
@@ -620,6 +710,29 @@ export default function App() {
             onClick={toggleLinkMode}
           />
         </div>
+        {rewireMode && (
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', backgroundColor: '#333', padding: '5px 10px', borderRadius: '5px' }}>
+            <span style={{color: 'white', fontSize: '12px'}}>Sursă:</span>
+            <input 
+              style={{width: '40px', padding: '3px'}} 
+              value={rewireStart} 
+              onChange={e => setRewireStart(e.target.value)} 
+            />
+            <span style={{color: 'white', fontSize: '12px'}}>Destinație:</span>
+            <input 
+              style={{width: '40px', padding: '3px'}} 
+              value={rewireEnd} 
+              onChange={e => setRewireEnd(e.target.value)} 
+            />
+          </div>
+        )}
+        <button
+          className="button"
+          onClick={toggleRewireMode}
+          style={{ backgroundColor: rewireMode ? '#dc3545' : '#28a745' }}
+        >
+          {rewireMode ? 'Oprește Simularea (Rewire)' : 'Testează Avaria (Rewire)'}
+        </button>
         <button
           className="button"
           onClick={() => setExportPanelOpen((o) => !o)}
@@ -660,6 +773,8 @@ export default function App() {
             </button>
           </div>
 
+
+
           {activeTab === 'json' ? (
             <pre className="export-code">{liveJson}</pre>
           ) : (
@@ -682,6 +797,9 @@ export default function App() {
           onNodeClick={onNodeClick}
           onNodeContextMenu={onNodeContextMenu}
           onEdgeDoubleClick={onEdgeDoubleClick}
+          onEdgeClick={onEdgeClick}
+          nodesConnectable={!rewireMode}
+          nodesDraggable={!rewireMode}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{ type: 'dualLabel' }}
