@@ -98,15 +98,15 @@ const getInterfaceForNode = (nodeId, edges, nodes) => {
   const connectedEdges = edges.filter(
     (e) => e.source === nodeId || e.target === nodeId
   );
-  const interfaceNumber = connectedEdges.length + 1;
+  const interfaceNumber = connectedEdges.length;
 
   // Pentru Switch (switch fix, neconfigurabil modular): slot/port -> Fa0/1, Fa0/2...
   if (node.data.label === 'Switch') {
-    return `Fa0/${interfaceNumber}`;
+    return `eth${interfaceNumber}`;
   }
   // Pentru Host: o singură placă de rețea -> o singură interfață fixă
   if (node.data.label === 'Host') {
-    return `Gig0/0/1`;
+    return `eth0`;
   }
 
   return `eth${interfaceNumber}`;
@@ -269,10 +269,33 @@ const buildTopologyObject = (nodes, edges) => {
   return { mode: 'build', hosts, switches, links };
 };
 
+const DEFAULT_MININET_TEMPLATE = `#!/usr/bin/env python3
+from mininet.net import Mininet
+from mininet.cli import CLI
+from mininet.log import setLogLevel
+from mininet.link import TCLink
+
+
+def make_network():
+    net = Mininet(link=TCLink)
+
+    net.start()
+    CLI(net)
+    net.stop()
+
+
+if __name__ == '__main__':
+    setLogLevel('info')
+    make_network()
+`;
+
 export default function App() {
   const reactFlowWrapper = useRef(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const initialFlow = typeof window !== 'undefined'
+    ? JSON.parse(localStorage.getItem('mininet-topology') || 'null')
+    : null;
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialFlow?.nodes || []);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialFlow?.edges || []);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
   // --- STATE PENTRU MODUL DE CONECTARE (LINK) ---
@@ -300,6 +323,54 @@ export default function App() {
     showError._t = window.setTimeout(() => setErrorMessage(null), 3500);
   };
 
+  const downloadTextFile = (content, fileName) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async () => {
+    if (activeTab === 'json') {
+      downloadTextFile(liveJson, 'build.txt');
+      return;
+    }
+
+    try {
+      const topology = buildTopologyObject(nodes, edges);
+      const response = await fetch('http://localhost:5000/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(topology),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const codeText = typeof payload === 'string' ? payload : payload?.code ?? '';
+
+      if (!codeText) {
+        throw new Error('Backendul nu a returnat codul generat.');
+      }
+
+      downloadTextFile(codeText, 'topology.py');
+    } catch (err) {
+      console.error('Eroare la exportul codului:', err);
+      const fallbackCode =
+        typeof generatedCode === 'string'
+          ? generatedCode
+          : generatedCode?.code || DEFAULT_MININET_TEMPLATE;
+      downloadTextFile(fallbackCode, 'topology.py');
+    }
+  };
+
   // De fiecare dată când se adaugă/șterge un host, un switch, o conexiune,
   // sau se editează weight/bw pe o legătură:
   //  1) trimitem JSON-ul la backend, care suprascrie mereu build.txt
@@ -309,6 +380,7 @@ export default function App() {
     const topology = buildTopologyObject(nodes, edges);
     const jsonStr = JSON.stringify(topology, null, 2);
     setLiveJson(jsonStr);
+    localStorage.setItem('mininet-topology', JSON.stringify({ nodes, edges }));
 
     // Dacă suntem în modul Rewire, oprim generarea de script Mininet!
     if (rewireMode) return;
@@ -762,6 +834,12 @@ export default function App() {
                 onClick={() => setActiveTab('code')}
               >
                 Cod generat
+              </button>
+              <button 
+                className="export-button"
+                onClick={handleExport}
+              >
+                Export 
               </button>
             </div>
             <button
