@@ -48,7 +48,7 @@ const ImageNode = ({ data }) => {
           className={data.isSourceSelected ? 'device-image selected-source' : 'device-image'}
         />
       </div>
-      
+
       {/* Eticheta text rămâne în afara containerului de imagine */}
       <div className="device-label">
         {getDisplayName(data.deviceId)}
@@ -104,8 +104,7 @@ const getInterfaceForNode = (nodeId, edges, nodes) => {
   if (node.data.label === 'Switch') {
     return `Fa0/${interfaceNumber}`;
   }
-  // Pentru Host: o singură placă de rețea -> un singur segment, fără slot,
-  // și fără numerotare incrementală (un PC obișnuit are mereu GigabitEthernet0)
+  // Pentru Host: o singură placă de rețea -> o singură interfață fixă
   if (node.data.label === 'Host') {
     return `Gig0/0/1`;
   }
@@ -166,8 +165,8 @@ const CustomEdgeWithDualLabels = ({
   data,
 }) => {
   const edgePath = `M${sourceX},${sourceY}L${targetX},${targetY}`;
-  
-  // Calculează punctele pentru label-uri (1/3 și 2/3 pe linie)
+
+  // Calculează punctele pentru label-uri (1/4 și 3/4 pe linie)
   const labelSourceX = sourceX + (targetX - sourceX) * 0.25;
   const labelSourceY = sourceY + (targetY - sourceY) * 0.25;
   const labelTargetX = sourceX + (targetX - sourceX) * 0.75;
@@ -222,6 +221,23 @@ const CustomEdgeWithDualLabels = ({
 
 const edgeTypes = { dualLabel: CustomEdgeWithDualLabels };
 
+// --- COMPONENTĂ PENTRU AFIȘAREA CODULUI GENERAT DE BACKEND (fost CodeViewer.jsx) ---
+// Inclusă direct aici, ca să nu mai fie nevoie de un fișier separat.
+const CodeViewer = ({ code }) => {
+  // Backend-ul poate întoarce fie direct un string cu codul Python,
+  // fie un obiect de forma { code: '...' } - acoperim ambele cazuri
+  const displayCode =
+    typeof code === 'string'
+      ? code
+      : code?.code ?? (code ? JSON.stringify(code, null, 2) : '');
+
+  return (
+    <pre className="export-code">
+      {displayCode || '// Codul generat de backend va apărea aici...'}
+    </pre>
+  );
+};
+
 // Construiește obiectul de topologie (mode/hosts/switches/links) pornind de
 // la nodurile și conexiunile curente din canvas — format identic cu cel
 // discutat pentru build.txt (id-uri stil h1/h2/s1, ip, weight, bw, active)
@@ -268,9 +284,11 @@ export default function App() {
   const hostCounterRef = useRef(0);
   const switchCounterRef = useRef(0);
 
-  // --- EXPORT LIVE: build.txt (JSON trimis la backend) ---
+  // --- EXPORT LIVE: build.txt (JSON) + cod generat de backend (CodeViewer) ---
   const [liveJson, setLiveJson] = useState('{}');
+  const [generatedCode, setGeneratedCode] = useState('');
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('json'); // 'json' | 'code'
 
   const showError = (msg) => {
     setErrorMessage(msg);
@@ -279,14 +297,16 @@ export default function App() {
   };
 
   // De fiecare dată când se adaugă/șterge un host, un switch, o conexiune,
-  // sau se editează weight/bw pe o legătură, trimitem JSON-ul la backend,
-  // care suprascrie mereu build.txt și se ocupă de generarea codului Mininet + Dijkstra
+  // sau se editează weight/bw pe o legătură:
+  //  1) trimitem JSON-ul la backend, care suprascrie mereu build.txt
+  //  2) cerem backend-ului codul generat (Mininet), pe baza aceleiași topologii,
+  //     și îl afișăm live prin CodeViewer
   useEffect(() => {
     const topology = buildTopologyObject(nodes, edges);
     const jsonStr = JSON.stringify(topology, null, 2);
-
     setLiveJson(jsonStr);
 
+    // 1) Salvare build.txt
     fetch('/api/build', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -294,48 +314,41 @@ export default function App() {
     }).catch(() => {
       // backend indisponibil - ignorăm silențios, JSON-ul rămâne vizibil în panou
     });
-  }, [nodes, edges]);
 
-  // De fiecare dată când se adaugă/șterge un host, un switch, o conexiune...
-  useEffect(() => {
-    const topology = buildTopologyObject(nodes, edges);
-    const jsonStr = JSON.stringify(topology, null, 2);
-
-    setLiveJson(jsonStr);
-
-    fetch('/api/build', {
+    // 2) Generare cod (Mininet / Dijkstra) pe baza topologiei curente
+    fetch('http://localhost:5000/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: jsonStr,
-    }).catch(() => {
-      // backend indisponibil - ignorăm silențios
-    });
+      body: JSON.stringify(topology),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => setGeneratedCode(data))
+      .catch((err) => {
+        console.error('Eroare la generarea codului:', err);
+      });
   }, [nodes, edges]);
 
-  // =============================================================
-  // ---> AICI ADAUGI NOUL COD PENTRU ACTUALIZAREA ÎN TIMP REAL <---
-  // =============================================================
+  // Ține conexiunile lipite de partea corectă a nodului atunci când acesta e mutat
   useEffect(() => {
     setEdges((eds) => {
       let hasChanges = false;
-      
-      const updatedEdges = eds.map((edge) => {
-        const sourceNode = nodes.find((n) => n.id === edge.source);
-        const targetNode = nodes.find((n) => n.id === edge.target);
 
-        if (sourceNode && targetNode) {
+      const updatedEdges = eds.map((edge) => {
+        const srcNode = nodes.find((n) => n.id === edge.source);
+        const tgtNode = nodes.find((n) => n.id === edge.target);
+
+        if (srcNode && tgtNode) {
           const { sourceHandle, targetHandle } = getClosestHandles(
-            sourceNode.position,
-            targetNode.position
+            srcNode.position,
+            tgtNode.position
           );
 
           if (edge.sourceHandle !== sourceHandle || edge.targetHandle !== targetHandle) {
             hasChanges = true;
-            return { 
-                ...edge, 
-                sourceHandle, 
-                targetHandle 
-            };
+            return { ...edge, sourceHandle, targetHandle };
           }
         }
         return edge;
@@ -344,26 +357,6 @@ export default function App() {
       return hasChanges ? updatedEdges : eds;
     });
   }, [nodes, setEdges]);
-  // =============================================================
-
- 
-
-// ... restul codului tău continuă la fel
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   // Verificare live, cât timp utilizatorul trage cablul din handle
   const isValidConnection = useCallback(
@@ -434,7 +427,7 @@ export default function App() {
         y: event.clientY - reactFlowBounds.top,
       });
 
-      // Atribuim un id "prietenos" (h1, h2... / s1, s2...) folosit apoi în build.txt și în scriptul Mininet
+      // Atribuim un id "prietenos" (h1, h2... / s1, s2...) folosit apoi în build.txt și în codul generat
       let deviceId = null;
       let ip = null;
       if (type === 'Host') {
@@ -631,7 +624,7 @@ export default function App() {
           className="button"
           onClick={() => setExportPanelOpen((o) => !o)}
         >
-          {exportPanelOpen ? 'Ascunde build.txt' : 'build.txt'}
+          {exportPanelOpen ? 'Ascunde panoul' : 'build.txt / Cod generat'}
         </button>
       </header>
 
@@ -644,7 +637,20 @@ export default function App() {
       {exportPanelOpen && (
         <div className="export-panel">
           <div className="export-panel-header">
-            <span className="export-title">build.txt</span>
+            <div className="export-tabs">
+              <button
+                className={activeTab === 'json' ? 'export-tab active' : 'export-tab'}
+                onClick={() => setActiveTab('json')}
+              >
+                build.txt
+              </button>
+              <button
+                className={activeTab === 'code' ? 'export-tab active' : 'export-tab'}
+                onClick={() => setActiveTab('code')}
+              >
+                Cod generat
+              </button>
+            </div>
             <button
               className="export-close"
               onClick={() => setExportPanelOpen(false)}
@@ -653,7 +659,12 @@ export default function App() {
               ✕
             </button>
           </div>
-          <pre className="export-code">{liveJson}</pre>
+
+          {activeTab === 'json' ? (
+            <pre className="export-code">{liveJson}</pre>
+          ) : (
+            <CodeViewer code={generatedCode} />
+          )}
         </div>
       )}
 
