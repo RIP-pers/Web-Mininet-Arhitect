@@ -712,13 +712,13 @@ export default function App() {
         </div>
         {rewireMode && (
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', backgroundColor: '#333', padding: '5px 10px', borderRadius: '5px' }}>
-            <span style={{color: 'white', fontSize: '12px'}}>Sursă:</span>
+            <span style={{color: 'white', fontSize: '12px'}}>Source:</span>
             <input 
               style={{width: '40px', padding: '3px'}} 
               value={rewireStart} 
               onChange={e => setRewireStart(e.target.value)} 
             />
-            <span style={{color: 'white', fontSize: '12px'}}>Destinație:</span>
+            <span style={{color: 'white', fontSize: '12px'}}>Destination:</span>
             <input 
               style={{width: '40px', padding: '3px'}} 
               value={rewireEnd} 
@@ -729,15 +729,15 @@ export default function App() {
         <button
           className="button"
           onClick={toggleRewireMode}
-          style={{ backgroundColor: rewireMode ? '#dc3545' : '#28a745' }}
+          style={{ backgroundColor: rewireMode ? '#610474' : '#d840e2' }}
         >
-          {rewireMode ? 'Oprește Simularea (Rewire)' : 'Testează Avaria (Rewire)'}
+          {rewireMode ? 'Stop Rewire' : 'Start Rewire'}
         </button>
         <button
           className="button"
           onClick={() => setExportPanelOpen((o) => !o)}
         >
-          {exportPanelOpen ? 'Ascunde panoul' : 'build.txt / Cod generat'}
+          {exportPanelOpen ? 'Ascunde panoul' : 'Generated code'}
         </button>
       </header>
 
