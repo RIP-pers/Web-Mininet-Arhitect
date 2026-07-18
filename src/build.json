@@ -1,0 +1,19 @@
+{
+  "mode": "build",
+  "hosts": [
+    { "id": "h1", "ip": "10.0.0.1" },
+    { "id": "h2", "ip": "10.0.0.2" }
+  ],
+  "switches": [
+    { "id": "s1" },
+    { "id": "s2" },
+    { "id": "s3" }
+  ],
+  "links": [
+    { "source": "h1", "target": "s1", "weight": 5, "bw": 100, "active": true },
+    { "source": "s1", "target": "s2", "weight": 15, "bw": 10, "active": true },
+    { "source": "s1", "target": "s3", "weight": 25, "bw": 50, "active": true },
+    { "source": "s3", "target": "s2", "weight": 10, "bw": 100, "active": true },
+    { "source": "s2", "target": "h2", "weight": 5, "bw": 100, "active": true }
+  ]
+}

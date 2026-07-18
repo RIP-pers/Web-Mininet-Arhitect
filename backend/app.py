@@ -95,10 +95,12 @@ def rewire_code(hosts, switches, links, start, end):
 			"status": "success",
 			"path": new_route
 		}
-	
 	except nx.NetworkXNoPath:
 		return {
 			"status": "error",
 			"message": f"Nu exista cai disponibile intre {end} si {start}."
 		}
+
+if __name__ == '__main__':
+	app.run(debug=True, port=5000)
 	
