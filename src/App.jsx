@@ -98,7 +98,7 @@ const getInterfaceForNode = (nodeId, edges, nodes) => {
   const connectedEdges = edges.filter(
     (e) => e.source === nodeId || e.target === nodeId
   );
-  const interfaceNumber = connectedEdges.length;
+  const interfaceNumber = connectedEdges.length + 1;
 
   // Pentru Switch (switch fix, neconfigurabil modular): slot/port -> Fa0/1, Fa0/2...
   if (node.data.label === 'Switch') {
