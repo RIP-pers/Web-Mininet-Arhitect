@@ -779,7 +779,7 @@ export default function App() {
           />
         </div>
         {rewireMode && (
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', backgroundColor: '#333', padding: '5px 10px', borderRadius: '5px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', backgroundColor: '#525252', padding: '5px 10px', borderRadius: '5px' }}>
             <span style={{color: 'white', fontSize: '12px'}}>Source:</span>
             <input 
               style={{width: '40px', padding: '3px'}} 
@@ -797,7 +797,7 @@ export default function App() {
         <button
           className="button"
           onClick={toggleRewireMode}
-          style={{ backgroundColor: rewireMode ? '#610474' : '#d840e2' }}
+          style={{ backgroundColor: rewireMode ? '#610474' : '#a063a5' }}
         >
           {rewireMode ? 'Stop Rewire' : 'Start Rewire'}
         </button>
