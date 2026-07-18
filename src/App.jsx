@@ -801,7 +801,7 @@ export default function App() {
         <button
           className="button"
           onClick={toggleRewireMode}
-          style={{ backgroundColor: rewireMode ? '#610474' : '#d840e2' }}
+          style={{ backgroundColor: rewireMode ? '#610474' : '#8e6891' }}
         >
           {rewireMode ? 'Stop Rewire' : 'Start Rewire'}
         </button>

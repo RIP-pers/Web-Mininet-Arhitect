@@ -9,26 +9,30 @@
   width: 100vw;
 }
 
-
 .header {
   background: radial-gradient(#0e0e0e, #653d6d);
   background-color: #5c2842;
   color: #ffffff;
   padding: 15px 30px;
   display: flex; 
-  justify-content: space-between; 
+  justify-content: flex-start; 
   align-items: center;            
   box-shadow: 0 4px 6px rgba(230, 102, 102, 0.1);
   font-family: sans-serif;
   width: 100%;
   z-index: 10; 
+  gap: 20px; 
+}
+
+.header > .button:first-of-type, 
+.header > div[style*="display: flex"] { 
+  margin-left: auto; 
 }
 
 .header-buttons {
   display: flex;
   gap: 15px;
 }
-
 
 .button {
   background-color: #8f3bf6;
