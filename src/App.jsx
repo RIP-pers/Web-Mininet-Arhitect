@@ -291,8 +291,11 @@ if __name__ == '__main__':
 
 export default function App() {
   const reactFlowWrapper = useRef(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const initialFlow = typeof window !== 'undefined'
+    ? JSON.parse(localStorage.getItem('mininet-topology') || 'null')
+    : null;
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialFlow?.nodes || []);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialFlow?.edges || []);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
   // --- STATE PENTRU MODUL DE CONECTARE (LINK) ---
@@ -373,6 +376,7 @@ export default function App() {
     const topology = buildTopologyObject(nodes, edges);
     const jsonStr = JSON.stringify(topology, null, 2);
     setLiveJson(jsonStr);
+    localStorage.setItem('mininet-topology', JSON.stringify({ nodes, edges }));
 
     // 1) Salvare build.txt
     fetch('/api/build', {
